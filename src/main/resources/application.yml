@@ -1,0 +1,32 @@
+spring:
+  application:
+    name: payment-router
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/payment_router
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update   # create-drop 대신 update 추천
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+    open-in-view: false
+
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+server:
+  port: 8080
+
+logging:
+  level:
+    org.springframework: INFO
+    com.dahyvuun: DEBUG
