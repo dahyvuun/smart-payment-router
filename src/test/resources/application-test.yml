@@ -1,0 +1,59 @@
+spring:
+  datasource:
+    # Testcontainers가 자동으로 URL 주입해줌 (TC_*)
+    url: jdbc:tc:postgresql:16:///payment_router_test
+    driver-class-name: org.testcontainers.jdbc.ContainerDatabaseDriver
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop   # 테스트마다 DB 초기화
+    show-sql: false           # 테스트 로그 줄이기
+    properties:
+      hibernate:
+        format_sql: false
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+    open-in-view: false
+
+  data:
+    redis:
+      host: localhost     # Testcontainers가 동적으로 설정
+      port: 6379
+
+  kafka:
+    bootstrap-servers: localhost:9092   # Testcontainers가 동적으로 설정
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+    consumer:
+      group-id: test-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+
+exchange-rate:
+  api-key: test-api-key
+  base-url: https://v6.exchangerate-api.com/v6
+
+logging:
+  level:
+    org.springframework: WARN
+    com.dahyvuun: INFO
+    org.testcontainers: INFO
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      exchangeRateApi:
+        sliding-window-size: 5
+        failure-rate-threshold: 50
+        minimum-number-of-calls: 3
+        wait-duration-in-open-state: 1s
+      paymentGateway:
+        sliding-window-size: 5
+        failure-rate-threshold: 50
+        minimum-number-of-calls: 3
+        wait-duration-in-open-state: 1s
+  retry:
+    instances:
+      exchangeRateApi:
+        max-attempts: 1   # 테스트에서 재시도 줄이기

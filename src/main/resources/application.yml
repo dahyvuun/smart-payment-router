@@ -10,7 +10,7 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: update   # create-drop 대신 update 추천
+      ddl-auto: update
     show-sql: true
     properties:
       hibernate:
@@ -23,6 +23,17 @@ spring:
       host: localhost
       port: 6379
 
+  kafka:
+    bootstrap-servers: localhost:9092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+    consumer:
+      group-id: payment-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+
 server:
   port: 8080
 
@@ -30,3 +41,68 @@ logging:
   level:
     org.springframework: INFO
     com.dahyvuun: DEBUG
+    org.springframework.security: DEBUG
+    io.github.resilience4j: DEBUG   # Circuit Breaker 상태 변화 로그 (CLOSED→OPEN→HALF_OPEN)
+
+exchange-rate:
+  api-key: fcb394612503fa401bbf1596
+  base-url: https://v6.exchangerate-api.com/v6
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      exchangeRateApi:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 10s
+        permitted-number-of-calls-in-half-open-state: 3
+        minimum-number-of-calls: 5
+        record-exceptions:
+          - java.io.IOException
+          - java.util.concurrent.TimeoutException
+          - org.springframework.web.reactive.function.client.WebClientRequestException
+          - com.dahyvuun.payment_router.exception.ExternalApiException
+        ignore-exceptions:
+          - com.dahyvuun.payment_router.exception.ResourceNotFoundException
+          - java.lang.IllegalStateException
+
+      paymentGateway:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 20
+        failure-rate-threshold: 40
+        wait-duration-in-open-state: 30s
+        permitted-number-of-calls-in-half-open-state: 5
+        minimum-number-of-calls: 10
+        record-exceptions:
+          - java.io.IOException
+          - java.util.concurrent.TimeoutException
+          - com.dahyvuun.payment_router.exception.ExternalApiException
+        ignore-exceptions:
+          - com.dahyvuun.payment_router.exception.ResourceNotFoundException
+          - java.lang.IllegalStateException
+
+  retry:
+    instances:
+      exchangeRateApi:
+        max-attempts: 3
+        wait-duration: 500ms
+        retry-exceptions:
+          - java.io.IOException
+          - org.springframework.web.reactive.function.client.WebClientRequestException
+        ignore-exceptions:
+          - com.dahyvuun.payment_router.exception.ResourceNotFoundException
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,circuitbreakers,circuitbreakerevents,retries,retryevents,metrics
+  endpoint:
+    health:
+      show-details: always
+  health:
+    circuitbreakers:
+      enabled: true
+    retries:
+      enabled: true
