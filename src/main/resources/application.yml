@@ -97,12 +97,20 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,circuitbreakers,circuitbreakerevents,retries,retryevents,metrics
+        include: health,circuitbreakers,circuitbreakerevents,retries,retryevents,metrics,prometheus
   endpoint:
     health:
       show-details: always
+    prometheus:
+      enabled: true
   health:
     circuitbreakers:
       enabled: true
     retries:
       enabled: true
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    tags:
+      application: payment-router
