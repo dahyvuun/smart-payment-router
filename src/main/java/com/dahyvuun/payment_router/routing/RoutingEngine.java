@@ -12,6 +12,7 @@ public class RoutingEngine {
 
     private final LowestFeeStrategy lowestFeeStrategy;
     private final HighestSuccessRateStrategy highestSuccessRateStrategy;
+    private final WeightedRoundRobinStrategy weightedRoundRobinStrategy;
 
     public List<PaymentRoute> buildAvailableRoutes() {
         return List.of(
@@ -39,6 +40,7 @@ public class RoutingEngine {
     public PaymentRoute selectRoute(List<PaymentRoute> routes, String strategy) {
         PaymentRoutingStrategy routingStrategy = switch (strategy) {
             case "HIGHEST_SUCCESS_RATE" -> highestSuccessRateStrategy;
+            case "WEIGHTED_ROUND_ROBIN" -> weightedRoundRobinStrategy;
             default -> lowestFeeStrategy;
         };
         return routingStrategy.selectRoute(routes);
