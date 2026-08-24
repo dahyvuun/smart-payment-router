@@ -14,6 +14,16 @@ java {
     }
 }
 
+ext {
+    springAiVersion = '1.0.0'
+}
+
+dependencyManagement {
+    imports {
+        mavenBom "org.springframework.ai:spring-ai-bom:${springAiVersion}"
+    }
+}
+
 configurations {
 	compileOnly {
 		extendsFrom annotationProcessor
@@ -66,8 +76,11 @@ dependencies {
     implementation 'io.micrometer:micrometer-registry-prometheus'
 
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
-}
 
+    // RAG: Spring AI + Ollama + Pgvector
+    implementation 'org.springframework.ai:spring-ai-starter-model-ollama'
+    implementation 'org.springframework.ai:spring-ai-starter-vector-store-pgvector'
+}
 tasks.named('test') {
 	useJUnitPlatform()
 }
