@@ -35,6 +35,7 @@ public class PaymentService {
     private final IdempotencyService idempotencyService;
     private final ObjectMapper objectMapper;
     private final PaymentEventProducer paymentEventProducer;
+    private final FailureEmbeddingService failureEmbeddingService;
 
     @Transactional
     public PaymentResponse processPayment(String email, PaymentRequest request, String idempotencyKey) {
@@ -131,12 +132,12 @@ public class PaymentService {
         return route;
     }
 
-    /**
-     * Circuit Breaker fallback - paymentGateway OPEN 시 호출
-     * 시그니처: 원본과 동일 + 마지막에 Throwable 추가
-     */
     public PaymentRoute savePaymentRouteFallback(Transaction transaction, PaymentRoute selectedRoute, Throwable ex) {
         log.error("Circuit Breaker OPEN for paymentGateway: {}", ex.getMessage());
+
+        // RAG: 실패 사유를 벡터로 저장 (임베딩 실패해도 결제 흐름엔 영향 없음)
+        failureEmbeddingService.embedFailure(transaction, selectedRoute.getPaymentMethod(), ex.getMessage());
+
         // fallback: 선택된 라우트를 그대로 반환 (DB 저장 없이)
         // 실제 운영에서는 실패 처리 또는 대체 게이트웨이로 전환
         return PaymentRoute.builder()
