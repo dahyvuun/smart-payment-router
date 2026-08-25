@@ -18,17 +18,16 @@ import org.testcontainers.utility.DockerImageName;
 @TestConfiguration(proxyBeanMethods = false)
 public class TestcontainersConfig {
 
-    /**
-     * PostgreSQL 16 container.
-     * @ServiceConnection -> auto-configures spring.datasource.*
-     */
     @Bean
     @ServiceConnection
     PostgreSQLContainer<?> postgresContainer() {
-        return new PostgreSQLContainer<>(DockerImageName.parse("postgres:16-alpine"))
+        return new PostgreSQLContainer<>(
+                DockerImageName.parse("pgvector/pgvector:pg16")
+                    .asCompatibleSubstituteFor("postgres"))
             .withDatabaseName("payment_router_test")
             .withUsername("postgres")
-            .withPassword("postgres");
+            .withPassword("postgres")
+            .withInitScript("init-vector-extensions.sql");
     }
 
     /**
