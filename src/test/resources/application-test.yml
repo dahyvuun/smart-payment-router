@@ -1,9 +1,4 @@
 spring:
-  datasource:
-    # Testcontainers가 자동으로 URL 주입해줌 (TC_*)
-    url: jdbc:tc:postgresql:16:///payment_router_test
-    driver-class-name: org.testcontainers.jdbc.ContainerDatabaseDriver
-
   jpa:
     hibernate:
       ddl-auto: create-drop   # 테스트마다 DB 초기화
