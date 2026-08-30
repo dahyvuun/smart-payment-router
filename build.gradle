@@ -77,9 +77,9 @@ dependencies {
 
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
 
-    // RAG: Spring AI + Ollama + Pgvector
-    implementation 'org.springframework.ai:spring-ai-starter-model-ollama'
+    // RAG: Spring AI + Pgvector
     implementation 'org.springframework.ai:spring-ai-starter-vector-store-pgvector'
+    implementation 'org.springframework.ai:spring-ai-starter-model-openai'
 }
 tasks.named('test') {
 	useJUnitPlatform()
