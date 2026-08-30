@@ -1,251 +1,136 @@
-# Payment Router
+# Smart Payment Router
 
-A fintech backend service that intelligently routes payments through multiple payment gateways based on configurable strategies.
+결제 요청을 여러 PG사(Payment Gateway)로 라우팅하는 Spring Boot 기반 백엔드 시스템입니다.
+장애 복원력(Circuit Breaker), 비동기 이벤트 처리(Kafka), 그리고 AI 기반 결제 실패 원인
+분석(RAG)을 포함한 실전형 백엔드 아키텍처를 목표로 만들었습니다.
 
-Built with Spring Boot 3.4, this project demonstrates production-grade patterns including fault tolerance, caching, event-driven architecture, and observability.
+**🔗 Live Demo:** https://smart-payment-router-production.up.railway.app
 
 ---
 
-## Tech Stack
+## 주요 기능
 
-| Category | Technology |
+- **결제 라우팅**: 여러 PG사 중 최적의 라우트를 선택하여 결제 처리
+- **장애 복원력**: Resilience4j 기반 Circuit Breaker + Retry로 외부 API(환율, PG사) 장애 격리
+- **비동기 이벤트 처리**: Kafka를 통한 결제 이벤트 발행/구독 (알림, 후처리 등)
+- **JWT 인증 + RBAC**: 이메일/비밀번호 로그인, USER/ADMIN 역할 기반 인가
+- **AI 기반 실패 분석 (RAG)**: 결제 실패 발생 시 OpenAI 임베딩으로 벡터화하여 저장하고,
+  이후 유사한 과거 실패 사례를 검색해 LLM이 근본 원인과 대응 방안을 분석
+- **Rate Limiting**: Bucket4j 기반 요청 제한
+- **모니터링**: Actuator + Prometheus 메트릭 노출
+
+## 기술 스택
+
+| 분류 | 기술 |
 |---|---|
-| Framework | Spring Boot 3.4, Java 21 |
-| Database | PostgreSQL 16, Spring Data JPA |
-| Cache | Redis 7 |
-| Messaging | Apache Kafka |
-| Security | Spring Security, JWT |
-| Resilience | Resilience4j (Circuit Breaker, Retry) |
-| Rate Limiting | Bucket4j |
-| Documentation | SpringDoc OpenAPI 3.0 (Swagger UI) |
-| Testing | JUnit 5, Testcontainers |
-| Containerization | Docker, Docker Compose |
+| Language / Framework | Java 21, Spring Boot 3.4 |
+| Database | PostgreSQL (pgvector extension) |
+| Cache | Redis |
+| Message Queue | Apache Kafka |
+| AI / RAG | Spring AI, OpenAI (text-embedding-3-small, gpt-4o-mini) |
+| Auth | Spring Security, JWT |
+| Resilience | Resilience4j (Circuit Breaker, Retry), Bucket4j (Rate Limiting) |
+| Test | JUnit 5, Testcontainers |
+| Build | Gradle |
 
----
+## 배포 인프라 (전부 무료 티어)
 
-## Features
+| 서비스 | 제공처 |
+|---|---|
+| Application Hosting | [Railway](https://railway.app) |
+| PostgreSQL + pgvector | [Neon](https://neon.tech) |
+| Redis | [Upstash](https://upstash.com) |
+| Kafka | [Confluent Cloud](https://confluent.cloud) |
 
-- **JWT Authentication** — Stateless token-based auth with BCrypt password encoding
-- **Multi-currency Wallets** — Create and manage wallets in USD, EUR, GBP, KRW and more
-- **Smart Payment Routing** — Pluggable routing strategies using the Strategy pattern
-  - `LOWEST_FEE` — routes to the gateway with the lowest transaction fee
-  - `HIGHEST_SUCCESS_RATE` — routes to the gateway with the best success rate
-- **Idempotency** — Safe payment retries using `X-Idempotency-Key` header backed by Redis
-- **Exchange Rate Integration** — Real-time rates via ExchangeRate-API with Redis caching
-- **Circuit Breaker** — Resilience4j protects against cascading failures from external APIs
-- **Rate Limiting** — Bucket4j token bucket algorithm per user (10 req/min for payments)
-- **Event-driven** — Kafka publishes payment events for downstream consumers
-- **Integration Tests** — Full test suite using Testcontainers (real PostgreSQL, Redis, Kafka)
-- **API Documentation** — Interactive Swagger UI with JWT auth support
+## 아키텍처
 
----
+```
+Client
+  │
+  ▼
+[Spring Boot API] ──JWT 인증──▶ [Security Filter Chain]
+  │
+  ├─▶ [PaymentService] ──▶ Circuit Breaker ──▶ [PG사 / 환율 API]
+  │         │
+  │         └─▶ 실패 시 [FailureEmbeddingService] ──▶ OpenAI Embedding ──▶ [pgvector]
+  │
+  ├─▶ [FailureAnalysisController] ──▶ 유사도 검색(pgvector) ──▶ OpenAI Chat ──▶ 원인 분석 결과
+  │
+  └─▶ [PaymentEventProducer] ──▶ Kafka ──▶ [Consumer: 알림/후처리]
+```
 
-## Getting Started
+## API 개요
 
-### Prerequisites
+| Method | Endpoint | 설명 | 인증 |
+|---|---|---|---|
+| POST | `/api/auth/register` | 회원가입 | - |
+| POST | `/api/auth/login` | 로그인 (JWT 발급) | - |
+| POST | `/api/payments` | 결제 요청 | USER |
+| GET | `/api/v1/admin/failures/analyze?reason=` | 결제 실패 원인 분석 (RAG) | ADMIN |
+| GET | `/actuator/health` | 헬스체크 | - |
 
-- Docker Desktop
-- Java 21
+## 로컬 개발 환경 실행
 
-### Run with Docker Compose
+### 1. 의존 서비스 실행 (Docker)
 
 ```bash
-# Clone the repository
-git clone https://github.com/dahyvuun/payment-router.git
-cd payment-router
+docker-compose up -d
+```
 
-# Start infrastructure (PostgreSQL, Redis, Kafka)
-docker compose up -d
+Postgres(pgvector), Redis, Kafka가 로컬에 뜹니다.
 
-# Run the application
+### 2. 환경변수 설정
+
+```bash
+export OPENAI_API_KEY=sk-...
+export EXCHANGE_RATE_API_KEY=...
+```
+
+### 3. 애플리케이션 실행
+
+```bash
 ./gradlew bootRun
 ```
 
-The API will be available at `http://localhost:8080`
-
-### API Documentation
-
-Open Swagger UI in your browser:
-
-```
-http://localhost:8080/swagger-ui.html
-```
-
----
-
-## API Overview
-
-### Authentication
-
-```http
-POST /api/auth/register
-Content-Type: application/json
-
-{
-  "email": "user@example.com",
-  "password": "password123"
-}
-```
-
-```http
-POST /api/auth/login
-Content-Type: application/json
-
-{
-  "email": "user@example.com",
-  "password": "password123"
-}
-```
-
-### Process a Payment
-
-```http
-POST /api/payments
-Authorization: Bearer <token>
-X-Idempotency-Key: payment-2026-001
-Content-Type: application/json
-
-{
-  "amount": 100.00,
-  "currency": "USD",
-  "strategy": "LOWEST_FEE"
-}
-```
-
-**Response:**
-```json
-{
-  "transactionId": 1,
-  "amount": 100.00,
-  "currency": "USD",
-  "status": "COMPLETED",
-  "selectedPaymentMethod": "BANK_TRANSFER",
-  "feeRate": 0.5,
-  "successRate": 98.0,
-  "createdAt": "2026-03-01T12:00:00"
-}
-```
-
-### Wallets
-
-```http
-POST   /api/wallets          # Create wallet
-GET    /api/wallets          # Get all wallets
-GET    /api/wallets/{id}     # Get wallet by ID
-DELETE /api/wallets/{id}     # Delete wallet
-```
-
-### Exchange Rates
-
-```http
-GET /api/exchange-rates/{baseCurrency}    # Get rates (cached in Redis)
-GET /api/exchange-rates/{from}/{to}       # Get specific rate
-```
-
-### Circuit Breaker Monitoring
-
-```http
-GET /api/v1/admin/circuit-breakers              # All circuit breakers
-GET /api/v1/admin/circuit-breakers/{name}       # Specific circuit breaker
-```
-
----
-
-## Architecture
-
-```
-┌─────────────────────────────────────────────────────┐
-│                    REST API Layer                    │
-│         (Spring MVC + JWT + Rate Limiting)           │
-└────────────────────┬────────────────────────────────┘
-                     │
-┌────────────────────▼────────────────────────────────┐
-│                  Service Layer                       │
-│   PaymentService  │  ExchangeRateService             │
-│   AuthService     │  WalletService                   │
-└──────┬────────────┴──────────┬──────────────────────┘
-       │                       │
-┌──────▼──────┐    ┌───────────▼──────────────────────┐
-│  Routing    │    │         Infrastructure            │
-│  Engine     │    │  PostgreSQL │ Redis │ Kafka        │
-│  (Strategy) │    └──────────────────────────────────┘
-└─────────────┘
-```
-
-### Payment Flow
-
-```
-Client → RateLimitInterceptor → PaymentController
-       → PaymentService (check idempotency key in Redis)
-       → RoutingEngine (select strategy)
-       → CircuitBreaker (call payment gateway)
-       → Save Transaction to PostgreSQL
-       → Publish PaymentEvent to Kafka
-       → Return PaymentResponse
-```
-
----
-
-## Resilience Patterns
-
-### Circuit Breaker (Resilience4j)
-
-The circuit breaker protects against cascading failures from external services.
-
-| State | Behavior |
-|---|---|
-| `CLOSED` | Requests pass through normally |
-| `OPEN` | Requests fail immediately, fallback is returned |
-| `HALF_OPEN` | A few test requests are allowed through |
-
-Configuration:
-- Failure rate threshold: 50%
-- Minimum calls before opening: 5
-- Wait duration in OPEN state: 10s
-
-### Rate Limiting (Bucket4j)
-
-Token bucket algorithm per authenticated user:
-
-| Endpoint | Limit |
-|---|---|
-| `POST /api/payments` | 10 requests/minute |
-| `GET /api/exchange-rates/**` | 30 requests/minute |
-| All other `/api/**` | 60 requests/minute |
-
----
-
-## Testing
+### 4. 테스트 실행
 
 ```bash
-# Run all tests (starts Testcontainers automatically)
 ./gradlew test
 ```
 
-Integration tests use **Testcontainers** to spin up real PostgreSQL, Redis, and Kafka instances — no mocking, no H2 in-memory database.
+Testcontainers를 사용해 격리된 환경에서 통합 테스트가 실행됩니다.
 
----
+## 배포 환경 구성
 
-## Project Structure
+프로덕션 환경은 아래 환경변수로 로컬 Docker 서비스를 대체합니다.
 
 ```
-src/
-├── main/java/com/dahyvuun/payment_router/
-│   ├── config/          # Redis, Kafka, OpenAPI, Rate Limit config
-│   ├── controller/      # REST controllers
-│   ├── domain/          # JPA entities (User, Wallet, Transaction, PaymentRoute)
-│   ├── dto/             # Request/Response DTOs
-│   ├── exception/       # Global exception handler
-│   ├── repository/      # Spring Data JPA repositories
-│   ├── routing/         # Strategy pattern (LowestFee, HighestSuccessRate)
-│   ├── security/        # JWT filter, SecurityConfig
-│   └── service/         # Business logic
-└── test/
-    └── java/            # Testcontainers integration tests
+DATABASE_URL, DATABASE_USERNAME, DATABASE_PASSWORD   # Neon Postgres
+REDIS_HOST, REDIS_PORT, REDIS_PASSWORD, REDIS_SSL_ENABLED   # Upstash Redis
+KAFKA_BOOTSTRAP_SERVERS, KAFKA_SECURITY_PROTOCOL,
+KAFKA_SASL_MECHANISM, KAFKA_SASL_JAAS_CONFIG        # Confluent Cloud Kafka
+OPENAI_API_KEY, EXCHANGE_RATE_API_KEY
+ADMIN_INITIAL_PASSWORD                               # 최초 관리자 계정 비밀번호
 ```
 
----
+무료 티어 리소스 제약(메모리 등)에 맞춰 `JAVA_TOOL_OPTIONS=-Xmx400m`으로 JVM 힙을
+제한하여 운영 중입니다.
 
-## License
+## 향후 개선 계획
 
-MIT License — see [LICENSE](LICENSE) for details.
+- [ ] Role 기반 인가(RBAC) 세분화 — 현재는 USER/ADMIN 2단계, 추후 권한 세분화 예정
+- [ ] Swagger/OpenAPI 문서 공개 엔드포인트 추가
+- [ ] CI/CD 파이프라인 (GitHub Actions → Railway 자동 배포)
+- [ ] Kafka DLQ(Dead Letter Queue) 구성으로 메시지 처리 실패 대응
+
+## 트러블슈팅 기록
+
+개발 및 배포 과정에서 다룬 주요 이슈들입니다.
+
+- **Testcontainers 미적용 이슈**: `application-test.yml`이 pgvector 미지원 이미지의
+  legacy JDBC URL을 사용하고 있어 테스트가 실패 → `@ServiceConnection` 기반
+  `TestcontainersConfig`를 명시적으로 import하도록 수정
+- **Windows에서 `gradlew` 실행 권한 누락**: Git이 실행 비트를 보존하지 않아 Railway
+  빌드가 `Permission denied`로 실패 → `git update-index --chmod=+x gradlew`로 해결
+- **Kafka Consumer OutOfMemoryError**: 무료 티어 메모리 한도 내에서 Kafka 클라이언트가
+  과도한 힙을 요구 → `-Xmx400m`으로 JVM 힙 제한
