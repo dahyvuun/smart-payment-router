@@ -35,6 +35,7 @@ public class SecurityConfig {
         "/v3/api-docs/**",
         "/actuator/**"
     ).permitAll()
+    .requestMatchers("/api/v1/admin/**").permitAll()  // 개발/테스트 편의용, 추후 인증 적용 예정
     .anyRequest().authenticated())
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
