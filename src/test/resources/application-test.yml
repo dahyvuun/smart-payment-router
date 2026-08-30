@@ -9,6 +9,25 @@ spring:
         dialect: org.hibernate.dialect.PostgreSQLDialect
     open-in-view: false
 
+  ai:
+    openai:
+      api-key: test-key-not-used
+      embedding:
+        options:
+          model: text-embedding-3-small
+      chat:
+        options:
+          model: gpt-4o-mini
+    model:
+      embedding: openai
+      chat: openai
+    vectorstore:
+      pgvector:
+        index-type: HNSW
+        distance-type: COSINE_DISTANCE
+        dimensions: 1536
+        initialize-schema: true
+
   data:
     redis:
       host: localhost     # Testcontainers가 동적으로 설정
