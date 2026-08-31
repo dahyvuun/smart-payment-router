@@ -5,6 +5,11 @@ gateways (PGs). Built to demonstrate a production-style backend architecture
 with fault tolerance (Circuit Breaker), asynchronous event processing
 (Kafka), and AI-powered payment failure analysis (RAG).
 
+## Demo
+![swagger-overview](./docs/images/swagger-overview.png)
+![swagger-endpoints](./docs/images/swagger-endpoints.png)
+![swagger-payment-detail](./docs/images/swagger-payment-detail.png)
+
 **Live Demo:** https://smart-payment-router-production.up.railway.app
 **Health Check:** https://smart-payment-router-production.up.railway.app/actuator/health
 
