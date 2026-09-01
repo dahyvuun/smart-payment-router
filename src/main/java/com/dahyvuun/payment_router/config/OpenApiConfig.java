@@ -27,18 +27,18 @@ public class OpenApiConfig {
     @Bean
     public OpenAPI openAPI() {
         return new OpenAPI()
-            .info(buildInfo())
-            .servers(buildServers())
-            .addSecurityItem(new SecurityRequirement().addList(SECURITY_SCHEME_NAME))
-            .components(new Components()
-                .addSecuritySchemes(SECURITY_SCHEME_NAME, buildSecurityScheme()));
+                .info(buildInfo())
+                .servers(buildServers())
+                .addSecurityItem(new SecurityRequirement().addList(SECURITY_SCHEME_NAME))
+                .components(new Components()
+                        .addSecuritySchemes(SECURITY_SCHEME_NAME, buildSecurityScheme()));
     }
 
     private Info buildInfo() {
         return new Info()
-            .title("Payment Router API")
-            .version("1.0.0")
-            .description("""
+                .title("Payment Router API")
+                .version("1.0.0")
+                .description("""
                     ## Payment Router Service
                     
                     A fintech backend service that intelligently routes payments through
@@ -57,28 +57,31 @@ public class OpenApiConfig {
                     2. Login via `POST /api/auth/login` to get a JWT token
                     3. Click **Authorize** and enter: `Bearer <your-token>`
                     """)
-            .contact(new Contact()
-                .name("Payment Router")
-                .url("https://github.com/dahyvuun/payment-router"))
-            .license(new License()
-                .name("MIT License")
-                .url("https://opensource.org/licenses/MIT"));
+                .contact(new Contact()
+                        .name("Payment Router")
+                        .url("https://github.com/dahyvuun/payment-router"))
+                .license(new License()
+                        .name("MIT License")
+                        .url("https://opensource.org/licenses/MIT"));
     }
 
     private List<Server> buildServers() {
         return List.of(
-            new Server()
-                .url("http://localhost:8080")
-                .description("Local development server")
+                new Server()
+                        .url("https://smart-payment-router-production.up.railway.app")
+                        .description("Production (Railway)"),
+                new Server()
+                        .url("http://localhost:8080")
+                        .description("Local development server")
         );
     }
 
     private SecurityScheme buildSecurityScheme() {
         return new SecurityScheme()
-            .name(SECURITY_SCHEME_NAME)
-            .type(SecurityScheme.Type.HTTP)
-            .scheme("bearer")
-            .bearerFormat("JWT")
-            .description("Enter your JWT token. Example: Bearer eyJhbGci...");
+                .name(SECURITY_SCHEME_NAME)
+                .type(SecurityScheme.Type.HTTP)
+                .scheme("bearer")
+                .bearerFormat("JWT")
+                .description("Enter your JWT token. Example: Bearer eyJhbGci...");
     }
 }
